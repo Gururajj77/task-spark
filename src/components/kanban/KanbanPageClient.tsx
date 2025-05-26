@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import KanbanBoard from '@/components/kanban/KanbanBoard';
 import TaskSummary from '@/components/kanban/TaskSummary'; // Import TaskSummary
 import { Sparkles } from 'lucide-react'; 
@@ -10,9 +10,9 @@ import { ThemeSwitcher } from '@/components/ThemeSwitcher'; // Import ThemeSwitc
 export default function KanbanPageClient() {
   const [taskCounts, setTaskCounts] = useState({ todo: 0, inprogress: 0, done: 0 });
 
-  const handleTaskCountsChange = (counts: { todo: number; inprogress: number; done: number }) => {
+  const handleTaskCountsChange = useCallback((counts: { todo: number; inprogress: number; done: number }) => {
     setTaskCounts(counts);
-  };
+  }, []); // setTaskCounts from useState is stable, so empty dependency array is fine.
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -35,3 +35,4 @@ export default function KanbanPageClient() {
     </div>
   );
 }
+
