@@ -20,15 +20,15 @@ const TaskSummary: React.FC<TaskSummaryProps> = ({ counts }) => {
   return (
     <div className="mb-6">
       <Card className="shadow-sm hover:shadow-md transition-shadow">
-        <CardHeader className="pb-2 pt-4 px-4">
+        <CardHeader className="pb-2 pt-4 px-3 sm:px-4">
           <CardTitle className="text-md font-medium text-foreground">Task Overview</CardTitle>
         </CardHeader>
-        <CardContent className="p-4 pt-2">
+        <CardContent className="px-3 py-2 sm:p-4 sm:pt-2">
           {totalTasks > 0 ? (
-            <div className="flex flex-col space-y-3 sm:flex-row sm:space-y-0 sm:space-x-4 sm:justify-around items-stretch">
-              <div className="flex-1 flex flex-col items-center justify-center p-3 bg-muted/30 rounded-lg min-w-[100px]">
-                <ListTodo className="h-6 w-6 mb-1 text-chart-3" />
-                <span className="font-bold text-xl text-foreground">{counts.todo}</span>
+            <div className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-4 sm:justify-around items-stretch">
+              <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-3 bg-muted/30 rounded-lg">
+                <ListTodo className="h-5 w-5 sm:h-6 sm:w-6 mb-0.5 sm:mb-1 text-chart-3" />
+                <span className="font-bold text-lg sm:text-xl text-foreground">{counts.todo}</span>
                 <p className="text-xs text-muted-foreground">To Do</p>
               </div>
               
@@ -38,9 +38,9 @@ const TaskSummary: React.FC<TaskSummaryProps> = ({ counts }) => {
                <hr className="block sm:hidden border-border" />
 
 
-              <div className="flex-1 flex flex-col items-center justify-center p-3 bg-muted/30 rounded-lg min-w-[100px]">
-                <ListChecks className="h-6 w-6 mb-1 text-chart-1" />
-                <span className="font-bold text-xl text-foreground">{counts.inprogress}</span>
+              <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-3 bg-muted/30 rounded-lg">
+                <ListChecks className="h-5 w-5 sm:h-6 sm:w-6 mb-0.5 sm:mb-1 text-chart-1" />
+                <span className="font-bold text-lg sm:text-xl text-foreground">{counts.inprogress}</span>
                 <p className="text-xs text-muted-foreground">In Progress</p>
               </div>
 
@@ -50,14 +50,14 @@ const TaskSummary: React.FC<TaskSummaryProps> = ({ counts }) => {
               <hr className="block sm:hidden border-border" />
               
 
-              <div className="flex-1 flex flex-col items-center justify-center p-3 bg-muted/30 rounded-lg min-w-[100px]">
-                <CheckCircle2 className="h-6 w-6 mb-1 text-chart-2" />
-                <span className="font-bold text-xl text-foreground">{counts.done}</span>
+              <div className="flex-1 flex flex-col items-center justify-center p-2 sm:p-3 bg-muted/30 rounded-lg">
+                <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 mb-0.5 sm:mb-1 text-chart-2" />
+                <span className="font-bold text-lg sm:text-xl text-foreground">{counts.done}</span>
                 <p className="text-xs text-muted-foreground">Done</p>
               </div>
             </div>
           ) : (
-            <div className="flex h-[100px] items-center justify-center text-center">
+            <div className="flex h-[70px] sm:h-[100px] items-center justify-center text-center">
               <p className="text-muted-foreground">No tasks yet. Add some tasks to see your progress!</p>
             </div>
           )}
