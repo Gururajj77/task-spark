@@ -2,12 +2,12 @@
 "use client";
 
 import React from 'react';
-import type { Column, Task } from '@/types';
+import type { ClientColumn, Task } from '@/types'; // Use ClientColumn
 import KanbanTask from './KanbanTask';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 interface KanbanColumnProps {
-  column: Column;
+  column: ClientColumn; // Updated to ClientColumn
   tasks: Task[];
   onDragStartTask: (e: React.DragEvent<HTMLDivElement>, taskId: string) => void;
   onDragOver: (e: React.DragEvent<HTMLDivElement>) => void;
