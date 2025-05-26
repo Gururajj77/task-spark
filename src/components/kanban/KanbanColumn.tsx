@@ -27,13 +27,13 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
 }) => {
   return (
     <Card
-      className="w-80 min-w-80 h-full flex flex-col bg-secondary/50 shadow-sm rounded-lg border"
+      className="w-80 min-w-80 h-full flex flex-col bg-card shadow-md rounded-lg border"
       onDragOver={onDragOver}
       onDrop={(e) => onDropOnColumn(e, column.id)}
       data-testid={`column-${column.id}`}
     >
-      <CardHeader className="p-4 border-b sticky top-0 bg-secondary/70 backdrop-blur-sm z-10 rounded-t-lg">
-        <CardTitle className="text-xl font-semibold text-secondary-foreground">{column.title} ({tasks.length})</CardTitle>
+      <CardHeader className="p-4 border-b sticky top-0 bg-muted/60 backdrop-blur-sm z-10 rounded-t-lg">
+        <CardTitle className="text-xl font-semibold text-foreground">{column.title} ({tasks.length})</CardTitle>
       </CardHeader>
       <CardContent className="p-4 flex-grow overflow-y-auto">
         {tasks.length === 0 && (
