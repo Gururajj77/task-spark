@@ -20,15 +20,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning> {/* suppressHydrationWarning is often useful with theme providers */}
-      <body className={`${inter.variable} font-sans antialiased bg-background text-foreground`}>
+    <html lang="en" suppressHydrationWarning><body className={`${inter.variable} font-sans antialiased bg-background text-foreground`}>
         <ThemeProvider
           defaultTheme="system"
           storageKey="taskspark-theme"
         >
           {children}
         </ThemeProvider>
-      </body>
-    </html>
+      </body></html>
   );
 }
+
