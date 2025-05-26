@@ -40,12 +40,10 @@ const KanbanBoard: React.FC = () => {
       if (savedState) {
         try {
           const parsedState = JSON.parse(savedState);
-          // Basic validation to ensure structure is somewhat correct
           if (parsedState.tasks && parsedState.columns && parsedState.columnOrder) {
             setBoardState(parsedState);
           } else {
-            // If structure is invalid, reset to initial state or handle error
-            localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear invalid state
+            localStorage.removeItem(LOCAL_STORAGE_KEY);
              setBoardState({
                 tasks: {},
                 columns: initialColumnsData,
@@ -54,7 +52,7 @@ const KanbanBoard: React.FC = () => {
           }
         } catch (error) {
           console.error("Failed to parse board state from localStorage", error);
-          localStorage.removeItem(LOCAL_STORAGE_KEY); // Clear corrupted state
+          localStorage.removeItem(LOCAL_STORAGE_KEY);
            setBoardState({
               tasks: {},
               columns: initialColumnsData,
@@ -74,8 +72,6 @@ const KanbanBoard: React.FC = () => {
   // Save state to local storage
   useEffect(() => {
     if (typeof window !== 'undefined' && (Object.keys(boardState.tasks).length > 0 || !localStorage.getItem(LOCAL_STORAGE_KEY))) {
-        // Only save if there are tasks or if it's the initial empty save
-        // This avoids overwriting a potentially valid empty state on first load if localStorage is empty
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(boardState));
     }
   }, [boardState]);
@@ -92,6 +88,8 @@ const KanbanBoard: React.FC = () => {
   };
 
   const handleDeleteTask = (taskId: string) => {
+    const taskTitle = boardState.tasks[taskId]?.title || "A task";
+
     setBoardState((prev) => {
       const newTasks = { ...prev.tasks };
       delete newTasks[taskId];
@@ -101,9 +99,9 @@ const KanbanBoard: React.FC = () => {
         newColumns[colId].taskIds = newColumns[colId].taskIds.filter(id => id !== taskId);
       });
       
-      toast({ title: "Task Deleted", description: "The task has been successfully deleted."});
       return { ...prev, tasks: newTasks, columns: newColumns };
     });
+    toast({ title: "Task Deleted", description: `Task "${taskTitle}" has been successfully deleted.`});
   };
 
   const handleFormSubmit = (data: { title: string; description?: string; deadline?: Date }, taskId?: string) => {
@@ -112,12 +110,12 @@ const KanbanBoard: React.FC = () => {
     if (taskId) { // Editing existing task
       setBoardState((prev) => {
         const updatedTask = { ...prev.tasks[taskId], ...data, deadline: deadlineString };
-        toast({ title: "Task Updated", description: `Task "${data.title}" has been updated.`});
         return {
           ...prev,
           tasks: { ...prev.tasks, [taskId]: updatedTask },
         };
       });
+      toast({ title: "Task Updated", description: `Task "${data.title}" has been updated.`});
     } else { // Adding new task
       const newTaskId = `task-${Date.now()}`;
       const newTask: Task = {
@@ -129,7 +127,6 @@ const KanbanBoard: React.FC = () => {
       setBoardState((prev) => {
         const firstColumnId = prev.columnOrder[0];
         const firstColumn = prev.columns[firstColumnId];
-        toast({ title: "Task Added", description: `Task "${data.title}" has been added.`});
         return {
           ...prev,
           tasks: { ...prev.tasks, [newTaskId]: newTask },
@@ -142,6 +139,7 @@ const KanbanBoard: React.FC = () => {
           },
         };
       });
+      toast({ title: "Task Added", description: `Task "${data.title}" has been added.`});
     }
   };
 
@@ -151,7 +149,7 @@ const KanbanBoard: React.FC = () => {
   };
 
   const onDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault(); // Necessary to allow dropping
+    e.preventDefault(); 
     e.dataTransfer.dropEffect = "move";
   };
 
@@ -159,32 +157,19 @@ const KanbanBoard: React.FC = () => {
     e.preventDefault();
     if (!draggedTaskId) return;
 
-    const task = boardState.tasks[draggedTaskId];
-    const sourceColumnId = task.columnId;
+    const taskBeingMoved = boardState.tasks[draggedTaskId];
+    const sourceColumnId = taskBeingMoved.columnId;
 
-    if (sourceColumnId === targetColumnId) return; // No change if dropped in the same column
+    if (sourceColumnId === targetColumnId) return; 
 
     setBoardState((prev) => {
-      // Remove from source column
       const sourceColumn = { ...prev.columns[sourceColumnId] };
       sourceColumn.taskIds = sourceColumn.taskIds.filter(id => id !== draggedTaskId);
 
-      // Add to target column
-      const targetColumn = { ...prev.columns[targetColumnId] };
-      // Add to the end. For reordering within column, insert at specific index.
-      targetColumn.taskIds = [...targetColumn.taskIds, draggedTaskId]; 
+      const targetCol = { ...prev.columns[targetColumnId] };
+      targetCol.taskIds = [...targetCol.taskIds, draggedTaskId]; 
       
-      // Update task's columnId
       const updatedTask = { ...prev.tasks[draggedTaskId], columnId: targetColumnId };
-
-      if (targetColumnId === 'done' && sourceColumnId !== 'done') {
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 50); // Trigger re-render for confetti
-        toast({ title: "Task Completed!", description: `"${updatedTask.title}" moved to Done. Great job!`, variant: "default" });
-      } else {
-         toast({ title: "Task Moved", description: `"${updatedTask.title}" moved to ${targetColumn.title}.`});
-      }
-
 
       return {
         ...prev,
@@ -192,17 +177,28 @@ const KanbanBoard: React.FC = () => {
         columns: {
           ...prev.columns,
           [sourceColumnId]: sourceColumn,
-          [targetColumnId]: targetColumn,
+          [targetColumnId]: targetCol,
         },
       };
     });
+
+    const finalTargetColumnTitle = boardState.columns[targetColumnId].title;
+
+    if (targetColumnId === 'done' && sourceColumnId !== 'done') {
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 50); 
+      toast({ title: "Task Completed!", description: `"${taskBeingMoved.title}" moved to Done. Great job!`, variant: "default" });
+    } else {
+       toast({ title: "Task Moved", description: `"${taskBeingMoved.title}" moved to ${finalTargetColumnTitle}.`});
+    }
+
     setDraggedTaskId(null);
   };
   
   const getTasksForColumn = useCallback((columnId: string) => {
     const column = boardState.columns[columnId];
     if (!column) return [];
-    return column.taskIds.map(taskId => boardState.tasks[taskId]).filter(task => task); // Filter out undefined tasks
+    return column.taskIds.map(taskId => boardState.tasks[taskId]).filter(task => task);
   }, [boardState.columns, boardState.tasks]);
 
 
