@@ -27,18 +27,18 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
 }) => {
   return (
     <Card
-      className="w-80 min-w-80 h-full flex flex-col bg-card shadow-md rounded-lg border"
+      className="w-full md:w-80 md:min-w-80 h-full flex flex-col bg-card shadow-lg rounded-lg border border-border/50" // Enhanced styling
       onDragOver={onDragOver}
       onDrop={(e) => onDropOnColumn(e, column.id)}
       data-testid={`column-${column.id}`}
     >
-      <CardHeader className="p-4 border-b sticky top-0 bg-muted/60 backdrop-blur-sm z-10 rounded-t-lg">
+      <CardHeader className="p-4 border-b border-border/50 sticky top-0 bg-card/80 backdrop-blur-sm z-10 rounded-t-lg"> {/* Adjusted background */}
         <CardTitle className="text-xl font-semibold text-foreground">{column.title} ({tasks.length})</CardTitle>
       </CardHeader>
-      <CardContent className="p-4 flex-grow overflow-y-auto">
+      <CardContent className="p-4 flex-grow overflow-y-auto space-y-3"> {/* Added space-y-3 for spacing between tasks */}
         {tasks.length === 0 && (
           <div className="text-center text-muted-foreground py-4 italic">
-            No tasks here yet.
+            Drag tasks here or add new ones!
           </div>
         )}
         {tasks.map((task) => (

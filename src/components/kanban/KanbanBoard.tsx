@@ -65,7 +65,6 @@ const KanbanBoard: React.FC = () => {
           taskIds: tasksData
             .filter(task => task.columnId === columnId)
             .map(task => task.id)
-            // Optionally sort tasks within columns, e.g., by createdAt
             .sort((idA, idB) => {
                 const taskA = newTasksMap[idA];
                 const taskB = newTasksMap[idB];
@@ -82,7 +81,7 @@ const KanbanBoard: React.FC = () => {
         columns: newColumnsMap,
         columnOrder: initialColumnOrderData,
       });
-    } else if (!isLoadingTasks && !tasksError) { // No tasks or empty array after loading
+    } else if (!isLoadingTasks && !tasksError) { 
         setBoardState({
             tasks: {},
             columns: createInitialClientColumns(),
@@ -94,8 +93,9 @@ const KanbanBoard: React.FC = () => {
 
   const addTaskMutation = useMutation({
     mutationFn: (newTaskData: Omit<NewTaskFirestore, 'createdAt'>) => addTaskToFirestore(newTaskData),
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast({ title: "Task Added", description: `Task "${variables.title}" has been added.`});
     },
     onError: (error) => {
       toast({ title: "Error Adding Task", description: error.message, variant: "destructive" });
@@ -104,8 +104,23 @@ const KanbanBoard: React.FC = () => {
 
   const updateTaskMutation = useMutation({
     mutationFn: (variables: { taskId: string; data: UpdateTaskFirestore }) => updateTaskInFirestore(variables.taskId, variables.data),
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      // If columnId is updated, we might trigger confetti or a specific move toast
+      if (variables.data.columnId) {
+        const taskBeingMoved = boardState.tasks[variables.taskId]; // Get task from current state to access its title
+        const finalTargetColumnTitle = initialColumnsData[variables.data.columnId]?.title || variables.data.columnId;
+        if (variables.data.columnId === 'done' && taskBeingMoved?.columnId !== 'done') {
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 50); 
+          toast({ title: "Task Completed!", description: `"${taskBeingMoved?.title || 'Task'}" moved to Done. Great job!`, variant: "default" });
+        } else {
+           toast({ title: "Task Moved", description: `"${taskBeingMoved?.title || 'Task'}" moved to ${finalTargetColumnTitle}.`});
+        }
+      } else {
+        // Generic update toast
+        toast({ title: "Task Updated", description: `Task "${variables.data.title || boardState.tasks[variables.taskId]?.title}" has been updated.`});
+      }
     },
     onError: (error) => {
       toast({ title: "Error Updating Task", description: error.message, variant: "destructive" });
@@ -114,8 +129,10 @@ const KanbanBoard: React.FC = () => {
 
   const deleteTaskMutation = useMutation({
     mutationFn: (taskId: string) => deleteTaskFromFirestore(taskId),
-    onSuccess: () => {
+    onSuccess: (data, taskId) => {
+      const taskTitle = boardState.tasks[taskId]?.title || "A task";
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      toast({ title: "Task Deleted", description: `Task "${taskTitle}" has been successfully deleted.`});
     },
     onError: (error) => {
       toast({ title: "Error Deleting Task", description: error.message, variant: "destructive" });
@@ -134,40 +151,27 @@ const KanbanBoard: React.FC = () => {
   };
 
   const handleDeleteTask = (taskId: string) => {
-    const taskTitle = boardState.tasks[taskId]?.title || "A task";
-    deleteTaskMutation.mutate(taskId, {
-      onSuccess: () => {
-        toast({ title: "Task Deleted", description: `Task "${taskTitle}" has been successfully deleted.`});
-      }
-    });
+    deleteTaskMutation.mutate(taskId);
   };
 
   const handleFormSubmit = (data: { title: string; description?: string; deadline?: Date }, taskId?: string) => {
     const deadlineString = data.deadline ? format(data.deadline, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx") : undefined;
 
-    if (taskId) { // Editing existing task
+    if (taskId) { 
       const updateData: UpdateTaskFirestore = {
         title: data.title,
-        description: data.description || "", // Ensure description is not undefined if it was empty
+        description: data.description || "", 
         deadline: deadlineString,
       };
-      updateTaskMutation.mutate({ taskId, data: updateData }, {
-        onSuccess: () => {
-          toast({ title: "Task Updated", description: `Task "${data.title}" has been updated.`});
-        }
-      });
-    } else { // Adding new task
+      updateTaskMutation.mutate({ taskId, data: updateData });
+    } else { 
       const newTaskData: Omit<NewTaskFirestore, 'createdAt'> = {
         title: data.title,
         description: data.description || "",
         deadline: deadlineString,
-        columnId: boardState.columnOrder[0], // Add to the first column by default
+        columnId: boardState.columnOrder[0], 
       };
-      addTaskMutation.mutate(newTaskData, {
-        onSuccess: () => {
-          toast({ title: "Task Added", description: `Task "${data.title}" has been added.`});
-        }
-      });
+      addTaskMutation.mutate(newTaskData);
     }
   };
 
@@ -191,19 +195,7 @@ const KanbanBoard: React.FC = () => {
     const sourceColumnId = taskBeingMoved.columnId;
     if (sourceColumnId === targetColumnId) return; 
 
-    updateTaskMutation.mutate({ taskId: draggedTaskId, data: { columnId: targetColumnId } }, {
-      onSuccess: () => {
-        const finalTargetColumnTitle = initialColumnsData[targetColumnId]?.title || targetColumnId;
-        if (targetColumnId === 'done' && sourceColumnId !== 'done') {
-          setShowConfetti(true);
-          // Short delay to allow confetti to render if triggered immediately after state update
-          setTimeout(() => setShowConfetti(false), 50); 
-          toast({ title: "Task Completed!", description: `"${taskBeingMoved.title}" moved to Done. Great job!`, variant: "default" });
-        } else {
-           toast({ title: "Task Moved", description: `"${taskBeingMoved.title}" moved to ${finalTargetColumnTitle}.`});
-        }
-      }
-    });
+    updateTaskMutation.mutate({ taskId: draggedTaskId, data: { columnId: targetColumnId } });
     setDraggedTaskId(null);
   };
   
@@ -237,20 +229,20 @@ const KanbanBoard: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       <div className="mb-6 flex justify-end">
-        <Button onClick={handleAddTask} size="lg" className="shadow-md hover:shadow-lg transition-shadow">
+        <Button onClick={handleAddTask} size="lg" className="shadow-md hover:shadow-lg transition-shadow bg-accent text-accent-foreground hover:bg-accent/90">
           <PlusCircle className="mr-2 h-5 w-5" /> Add New Task
         </Button>
       </div>
 
-      <div className="flex-grow flex space-x-4 overflow-x-auto pb-4 min-h-[60vh]">
+      <div className="flex-grow flex flex-col space-y-4 md:flex-row md:space-x-4 md:space-y-0 overflow-x-auto pb-4 min-h-[60vh]">
         {boardState.columnOrder.map((columnId) => {
           const column = boardState.columns[columnId];
-          if (!column) return null; // Should not happen if boardState is correctly initialized
+          if (!column) return null;
           const tasks = getTasksForColumn(columnId);
           return (
             <KanbanColumn
               key={column.id}
-              column={column} // Pass ClientColumn here
+              column={column}
               tasks={tasks}
               onDragStartTask={onDragStart}
               onDragOver={onDragOver}

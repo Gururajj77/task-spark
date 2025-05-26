@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import type { Task } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, FileText, AlignLeft, CalendarDays } from 'lucide-react'; // Added icons
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
@@ -57,18 +57,20 @@ const TaskForm: React.FC<TaskFormProps> = ({ isOpen, onClose, onSubmit, initialD
   });
 
   useEffect(() => {
-    if (initialData) {
-      form.reset({
-        title: initialData.title,
-        description: initialData.description || '',
-        deadline: initialData.deadline ? parseISO(initialData.deadline) : undefined,
-      });
-    } else {
-      form.reset({
-        title: '',
-        description: '',
-        deadline: undefined,
-      });
+    if (isOpen) { // Reset form only when dialog opens
+      if (initialData) {
+        form.reset({
+          title: initialData.title,
+          description: initialData.description || '',
+          deadline: initialData.deadline ? parseISO(initialData.deadline) : undefined,
+        });
+      } else {
+        form.reset({
+          title: '',
+          description: '',
+          deadline: undefined,
+        });
+      }
     }
   }, [initialData, form, isOpen]);
 
@@ -78,23 +80,25 @@ const TaskForm: React.FC<TaskFormProps> = ({ isOpen, onClose, onSubmit, initialD
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] bg-card shadow-xl rounded-lg">
-        <DialogHeader>
-          <DialogTitle className="text-2xl font-semibold">
-            {initialData ? 'Edit Task' : 'Add New Task'}
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="sm:max-w-md bg-card shadow-xl rounded-lg border-border/50"> {/* Adjusted max-width for better feel */}
+        <DialogHeader className="pb-2 pt-4 px-6">
+          <DialogTitle className="text-2xl font-bold text-primary"> {/* Enhanced title */}
+            {initialData ? 'Edit Task Details' : 'Create a New Task'}
           </DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6 p-1">
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6 p-6 pt-2">
             <FormField
               control={form.control}
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-foreground">Title</FormLabel>
+                  <FormLabel className="text-foreground flex items-center">
+                    <FileText className="h-4 w-4 mr-2 text-primary" /> Title
+                  </FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter task title" {...field} className="bg-background border-input" />
+                    <Input placeholder="E.g., Design new dashboard" {...field} className="bg-input border-border focus:border-primary text-foreground placeholder:text-muted-foreground" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -105,9 +109,11 @@ const TaskForm: React.FC<TaskFormProps> = ({ isOpen, onClose, onSubmit, initialD
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-foreground">Description (Optional)</FormLabel>
+                  <FormLabel className="text-foreground flex items-center">
+                    <AlignLeft className="h-4 w-4 mr-2 text-primary" /> Description (Optional)
+                  </FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Enter task description" {...field} className="bg-background border-input min-h-[100px]" />
+                    <Textarea placeholder="Add more details about the task..." {...field} className="bg-input border-border focus:border-primary min-h-[100px] text-foreground placeholder:text-muted-foreground" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -118,14 +124,16 @@ const TaskForm: React.FC<TaskFormProps> = ({ isOpen, onClose, onSubmit, initialD
               name="deadline"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel className="text-foreground">Deadline (Optional)</FormLabel>
+                  <FormLabel className="text-foreground flex items-center">
+                    <CalendarDays className="h-4 w-4 mr-2 text-primary" /> Deadline (Optional)
+                  </FormLabel>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
                         <Button
                           variant={"outline"}
                           className={cn(
-                            "w-full pl-3 text-left font-normal bg-background border-input",
+                            "w-full pl-3 text-left font-normal bg-input border-border hover:bg-input/80 text-foreground",
                             !field.value && "text-muted-foreground"
                           )}
                         >
@@ -138,13 +146,14 @@ const TaskForm: React.FC<TaskFormProps> = ({ isOpen, onClose, onSubmit, initialD
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-card" align="start">
+                    <PopoverContent className="w-auto p-0 bg-card border-border" align="start">
                       <Calendar
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
-                        disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) } // Disable past dates
+                        disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) }
                         initialFocus
+                        className="bg-card text-foreground" // Ensure calendar also picks up theme
                       />
                     </PopoverContent>
                   </Popover>
@@ -152,13 +161,13 @@ const TaskForm: React.FC<TaskFormProps> = ({ isOpen, onClose, onSubmit, initialD
                 </FormItem>
               )}
             />
-            <DialogFooter className="pt-4">
+            <DialogFooter className="pt-6">
               <DialogClose asChild>
-                <Button type="button" variant="outline">
+                <Button type="button" variant="outline" className="border-border hover:bg-muted hover:text-muted-foreground">
                   Cancel
                 </Button>
               </DialogClose>
-              <Button type="submit" variant="default">
+              <Button type="submit" variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
                 {initialData ? 'Save Changes' : 'Add Task'}
               </Button>
             </DialogFooter>
