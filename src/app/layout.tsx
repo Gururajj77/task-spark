@@ -1,11 +1,12 @@
 
 import type {Metadata} from 'next';
-import { Inter } from 'next/font/google'; // Changed font
+import { Inter } from 'next/font/google';
 import './globals.css';
+import { ThemeProvider } from '@/contexts/ThemeProvider'; // Import ThemeProvider
 
-const inter = Inter({ // Changed font
+const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-inter', // Changed font variable
+  variable: '--font-inter',
 });
 
 export const metadata: Metadata = {
@@ -19,9 +20,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} font-sans antialiased bg-background text-foreground`}> {/* Use new font variable and add font-sans */}
-        {children}
+    <html lang="en" suppressHydrationWarning> {/* suppressHydrationWarning is often useful with theme providers */}
+      <body className={`${inter.variable} font-sans antialiased bg-background text-foreground`}>
+        <ThemeProvider
+          defaultTheme="system"
+          storageKey="taskspark-theme"
+        >
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

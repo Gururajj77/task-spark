@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type { BoardState, Task, Column as ColumnDef, ClientColumn, NewTaskFirestore, UpdateTaskFirestore } from '@/types';
 import KanbanColumn from './KanbanColumn';
 import TaskForm from './TaskForm';
@@ -32,7 +32,7 @@ const createInitialClientColumns = (): Record<string, ClientColumn> => {
 };
 
 
-const KanbanBoard: React.FC = () => {
+const KanbanBoard: React.FC<{ onTaskCountsChange: (counts: { todo: number; inprogress: number; done: number }) => void }> = ({ onTaskCountsChange }) => {
   const queryClient = useQueryClient();
   const [boardState, setBoardState] = useState<BoardState>({
     tasks: {},
@@ -58,22 +58,26 @@ const KanbanBoard: React.FC = () => {
       });
 
       const newColumnsMap: Record<string, ClientColumn> = {};
+      const taskCounts = { todo: 0, inprogress: 0, done: 0 };
+
       initialColumnOrderData.forEach(columnId => {
         const columnDef = initialColumnsData[columnId];
+        const tasksInColumn = tasksData
+          .filter(task => task.columnId === columnId)
+          .sort((a, b) => {
+              if (a.createdAt && b.createdAt) {
+                  return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+              }
+              return 0;
+          });
+        
         newColumnsMap[columnId] = {
           ...columnDef,
-          taskIds: tasksData
-            .filter(task => task.columnId === columnId)
-            .map(task => task.id)
-            .sort((idA, idB) => {
-                const taskA = newTasksMap[idA];
-                const taskB = newTasksMap[idB];
-                if (taskA.createdAt && taskB.createdAt) {
-                    return new Date(taskA.createdAt).getTime() - new Date(taskB.createdAt).getTime();
-                }
-                return 0;
-            })
+          taskIds: tasksInColumn.map(task => task.id)
         };
+        if (columnId === 'todo') taskCounts.todo = tasksInColumn.length;
+        else if (columnId === 'inprogress') taskCounts.inprogress = tasksInColumn.length;
+        else if (columnId === 'done') taskCounts.done = tasksInColumn.length;
       });
       
       setBoardState({
@@ -81,14 +85,17 @@ const KanbanBoard: React.FC = () => {
         columns: newColumnsMap,
         columnOrder: initialColumnOrderData,
       });
+      onTaskCountsChange(taskCounts);
+
     } else if (!isLoadingTasks && !tasksError) { 
         setBoardState({
             tasks: {},
             columns: createInitialClientColumns(),
             columnOrder: initialColumnOrderData,
         });
+        onTaskCountsChange({ todo: 0, inprogress: 0, done: 0 });
     }
-  }, [tasksData, isLoadingTasks, tasksError]);
+  }, [tasksData, isLoadingTasks, tasksError, onTaskCountsChange]);
 
 
   const addTaskMutation = useMutation({
@@ -106,9 +113,8 @@ const KanbanBoard: React.FC = () => {
     mutationFn: (variables: { taskId: string; data: UpdateTaskFirestore }) => updateTaskInFirestore(variables.taskId, variables.data),
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
-      // If columnId is updated, we might trigger confetti or a specific move toast
+      const taskBeingMoved = boardState.tasks[variables.taskId];
       if (variables.data.columnId) {
-        const taskBeingMoved = boardState.tasks[variables.taskId]; // Get task from current state to access its title
         const finalTargetColumnTitle = initialColumnsData[variables.data.columnId]?.title || variables.data.columnId;
         if (variables.data.columnId === 'done' && taskBeingMoved?.columnId !== 'done') {
           setShowConfetti(true);
@@ -118,8 +124,7 @@ const KanbanBoard: React.FC = () => {
            toast({ title: "Task Moved", description: `"${taskBeingMoved?.title || 'Task'}" moved to ${finalTargetColumnTitle}.`});
         }
       } else {
-        // Generic update toast
-        toast({ title: "Task Updated", description: `Task "${variables.data.title || boardState.tasks[variables.taskId]?.title}" has been updated.`});
+        toast({ title: "Task Updated", description: `Task "${variables.data.title || taskBeingMoved?.title}" has been updated.`});
       }
     },
     onError: (error) => {
@@ -207,7 +212,7 @@ const KanbanBoard: React.FC = () => {
 
   if (isLoadingTasks) {
     return (
-      <div className="flex justify-center items-center h-[80vh]">
+      <div className="flex justify-center items-center h-[calc(80vh-100px)]"> {/* Adjusted height */}
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="ml-4 text-lg">Loading tasks...</p>
       </div>
@@ -216,7 +221,7 @@ const KanbanBoard: React.FC = () => {
 
   if (tasksError) {
      return (
-      <div className="flex flex-col justify-center items-center h-[80vh] text-center">
+      <div className="flex flex-col justify-center items-center h-[calc(80vh-100px)] text-center"> {/* Adjusted height */}
         <p className="text-xl text-destructive mb-2">Error loading tasks!</p>
         <p className="text-muted-foreground">{tasksError.message}</p>
         <Button onClick={() => queryClient.refetchQueries({queryKey: ['tasks']})} className="mt-4">
@@ -234,7 +239,7 @@ const KanbanBoard: React.FC = () => {
         </Button>
       </div>
 
-      <div className="flex-grow flex flex-col space-y-4 md:flex-row md:space-x-4 md:space-y-0 overflow-x-auto pb-4 min-h-[60vh]">
+      <div className="flex-grow flex flex-col space-y-4 md:flex-row md:space-x-4 md:space-y-0 overflow-x-auto pb-4 min-h-[calc(100vh-300px)]"> {/* Adjusted min-height for content */}
         {boardState.columnOrder.map((columnId) => {
           const column = boardState.columns[columnId];
           if (!column) return null;
