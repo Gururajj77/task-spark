@@ -3,13 +3,13 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBGP7NyLzdwtR3VuIL5Rs9SAtNUGKUxCZY",
-  authDomain: "task-spark-a4309.firebaseapp.com",
-  projectId: "task-spark-a4309",
-  storageBucket: "task-spark-a4309.firebasestorage.app",
-  messagingSenderId: "837691689947",
-  appId: "1:837691689947:web:ebb3e566a3001076d8b5fe",
-  measurementId: "G-DKZJQBEHQY"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
