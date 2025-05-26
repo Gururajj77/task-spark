@@ -42,7 +42,7 @@ const KanbanTask: React.FC<KanbanTaskProps> = ({ task, onDragStart, onEdit, onDe
             {task.deadline && (
               <div className="flex items-center text-xs text-accent mt-1">
                 <CalendarDays className="h-3.5 w-3.5 mr-1.5" />
-                Deadline: {format(parseISO(task.deadline), "MMM dd, yyyy")}
+                Deadline: {format(parseISO(task.deadline), "MMM dd, yyyy 'at' HH:mm")}
               </div>
             )}
           </CardContent>

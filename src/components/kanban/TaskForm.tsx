@@ -26,7 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import type { Task } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, FileText, AlignLeft, CalendarDays } from 'lucide-react'; // Added icons
+import { CalendarIcon, FileText, AlignLeft, CalendarDays, Clock } from 'lucide-react'; // Added Clock icon
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
@@ -34,7 +34,13 @@ import { format, parseISO } from 'date-fns';
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required').max(100, 'Title is too long'),
   description: z.string().max(500, 'Description is too long').optional(),
-  deadline: z.date().optional(),
+  deadlineDate: z.date().optional(),
+  deadlineTime: z.string().optional().refine(val => !val || /^([01]\d|2[0-3]):([0-5]\d)$/.test(val), {
+    message: "Invalid time format (HH:mm)",
+  }),
+}).refine(data => !(data.deadlineTime && !data.deadlineDate), {
+  message: "Cannot set time without a date. Please select a date first.",
+  path: ["deadlineTime"],
 });
 
 type TaskFormData = z.infer<typeof taskSchema>;
@@ -42,7 +48,7 @@ type TaskFormData = z.infer<typeof taskSchema>;
 interface TaskFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: TaskFormData, taskId?: string) => void;
+  onSubmit: (data: { title: string; description?: string; deadline?: Date }, taskId?: string) => void;
   initialData?: Task;
 }
 
@@ -52,38 +58,61 @@ const TaskForm: React.FC<TaskFormProps> = ({ isOpen, onClose, onSubmit, initialD
     defaultValues: {
       title: '',
       description: '',
-      deadline: undefined,
+      deadlineDate: undefined,
+      deadlineTime: '',
     },
   });
 
   useEffect(() => {
-    if (isOpen) { // Reset form only when dialog opens
-      if (initialData) {
+    if (isOpen) {
+      if (initialData && initialData.deadline) {
+        const parsedDeadline = parseISO(initialData.deadline);
         form.reset({
           title: initialData.title,
           description: initialData.description || '',
-          deadline: initialData.deadline ? parseISO(initialData.deadline) : undefined,
+          deadlineDate: parsedDeadline,
+          deadlineTime: format(parsedDeadline, "HH:mm"),
         });
       } else {
         form.reset({
           title: '',
           description: '',
-          deadline: undefined,
+          deadlineDate: undefined,
+          deadlineTime: '',
         });
       }
     }
   }, [initialData, form, isOpen]);
 
+  const deadlineDateValue = form.watch('deadlineDate');
+  useEffect(() => {
+    if (!deadlineDateValue) {
+      form.setValue('deadlineTime', '');
+    }
+  }, [deadlineDateValue, form]);
+
   const handleSubmit = (data: TaskFormData) => {
-    onSubmit(data, initialData?.id);
+    let combinedDeadline: Date | undefined = undefined;
+    if (data.deadlineDate) {
+      combinedDeadline = new Date(data.deadlineDate); // Date part, time is 00:00 local
+      if (data.deadlineTime) {
+        const [hours, minutes] = data.deadlineTime.split(':').map(Number);
+        combinedDeadline.setHours(hours, minutes, 0, 0); // Set specific hours and minutes
+      }
+    }
+    onSubmit({ 
+      title: data.title, 
+      description: data.description,
+      deadline: combinedDeadline 
+    }, initialData?.id);
     onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="sm:max-w-md bg-card shadow-xl rounded-lg border-border/50"> {/* Adjusted max-width for better feel */}
+      <DialogContent className="sm:max-w-md bg-card shadow-xl rounded-lg border-border/50">
         <DialogHeader className="pb-2 pt-4 px-6">
-          <DialogTitle className="text-2xl font-bold text-primary"> {/* Enhanced title */}
+          <DialogTitle className="text-2xl font-bold text-primary">
             {initialData ? 'Edit Task Details' : 'Create a New Task'}
           </DialogTitle>
         </DialogHeader>
@@ -119,48 +148,70 @@ const TaskForm: React.FC<TaskFormProps> = ({ isOpen, onClose, onSubmit, initialD
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="deadline"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel className="text-foreground flex items-center">
-                    <CalendarDays className="h-4 w-4 mr-2 text-primary" /> Deadline (Optional)
-                  </FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal bg-input border-border hover:bg-input/80 text-foreground",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-card border-border" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) }
-                        initialFocus
-                        className="bg-card text-foreground" // Ensure calendar also picks up theme
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="deadlineDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel className="text-foreground flex items-center">
+                      <CalendarDays className="h-4 w-4 mr-2 text-primary" /> Deadline Date
+                    </FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full pl-3 text-left font-normal bg-input border-border hover:bg-input/80 text-foreground",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 bg-card border-border" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) }
+                          initialFocus
+                          className="bg-card text-foreground"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="deadlineTime"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-foreground flex items-center">
+                      <Clock className="h-4 w-4 mr-2 text-primary" /> Deadline Time
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="time" 
+                        {...field} 
+                        className="bg-input border-border focus:border-primary text-foreground placeholder:text-muted-foreground"
+                        disabled={!deadlineDateValue}
                       />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <DialogFooter className="pt-6">
               <DialogClose asChild>
                 <Button type="button" variant="outline" className="border-border hover:bg-muted hover:text-muted-foreground">
